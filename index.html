@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <title>Document</title>
+    <style>
+        #main {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        fieldset {
+            width: 300px;
+            align-items: center;
+        }
+
+        input {
+            float: right;
+        }
+
+        label {
+            text-align: right;
+            clear: both;
+            float: left;
+            margin-right: 15px;
+            padding-top: 1px
+        }
+
+        .square {
+            height: 30px;
+            width: 30px;
+            margin-top: 5px;
+            margin-left: 5px;
+            display: inline-block;
+        }
+
+        .square:hover {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <fieldset id='main'>
+        <fieldset>
+            <legend>24-bits color</legend>
+            <label for='color24'>Hexa:</label>
+            <input id='color24'><br>
+            <label for='color24rgb'>(R, G, B):</label>
+            <input id='color24rgb'><br>
+            <label for='color24d'> Decimal:</label>
+            <input type='number' id='color24d'>
+        </fieldset>
+        <fieldset>
+            <legend>16-bits color</legend>
+            <label for='color16'>Hexa:</label>
+            <input id='color16'><br>
+            <label for='color16rgb'>(R, G, B):</label>
+            <input id='color16rgb'><br>
+            <label for='color16d'> Decimal:</label>
+            <input type='number' id='color16d'>
+        </fieldset>
+        <input type='color' id='colorPicker'><br>
+        <button id='capture' onclick="capture()">Capture</button><br>
+
+        <div id='capturedColors'></div><br>
+        <button id='copy' onclick="copyArr()">Copy captured</button>
+
+        <button id='clear' onclick="clearCaptured()">Clear</button><br>
+        <input id='pasteContent' style='float:left'>
+        <button id='paste' onclick="pasteArr()">Paste captured</button>
+    </fieldset>
+    <script>
+        let arr = new Array()
+
+        $('#color24, #color24rgb, #color24d, #color16, #color16rgb, #colord, #colorPicker').on('change keydown paste input', function () {
+            var source = event.currentTarget.id
+            update(source);
+        })
+
+
+        function capture() {
+            var col = document.getElementById('color24').value
+            arr.push(col)
+            addCaptured(arr.length - 1, col)
+        }
+
+        function copyArr() {
+            copy(arr.toString())
+        }
+
+        function clearCaptured() {
+            $('#capturedColors').empty()
+            arr = new Array()
+        }
+
+        function pasteArr() {
+            var s = document.getElementById('pasteContent').value
+            document.getElementById('pasteContent').value = ''
+            if (s != '') {
+                arr = s.split(',')
+                $('#capturedColors').empty()
+                arr.forEach((cl, i) => {
+                    addCaptured(i, cl)
+                });
+            }
+        }
+        function addCaptured(id, color) {
+            $('#capturedColors').append('<div class="square" id="capturedColor' + id + '"></div>')
+            with ($('#capturedColor' + id)) {
+                click(function () {
+                    $('#color24').val(arr[parseInt(event.currentTarget.id.replace('capturedColor', ''))])
+                    update('color24')
+                })
+                css('background-color', color)
+            }
+        }
+        function copy(str) {
+            // Create new element
+            var el = document.createElement('textarea');
+            // Set value (string to be copied)
+            el.value = str;
+            // Set non-editable to avoid focus and move outside of view
+            el.setAttribute('readonly', '');
+            el.style = { position: 'absolute', left: '-9999px' };
+            document.body.appendChild(el);
+            // Select text inside element
+            el.select();
+            // Copy text to clipboard
+            document.execCommand('copy');
+            // Remove temporary element
+            document.body.removeChild(el);
+        }
+
+        function update(source) {
+            let sourceVal = ''
+            sourceVal = document.getElementById(source).value
+            var int24, r, g, b
+            int24 = 0
+            switch (source) {
+                case 'colorPicker':
+                    int24 = parseInt(sourceVal.replace(/^#/, ''), 16)
+                    break
+                case 'color24':
+                    int24 = parseInt(sourceVal.replace(/^#/, ''), 16)
+                    break
+                case 'color24rgb':
+                    var c
+                    if (sourceVal.indexOf(',') == -1) c = ' '; else c = ',';
+                    rgb = sourceVal.split(c)
+                    if (rgb.length < 3) return
+
+                    r = parseInt(rgb[0])
+                    g = parseInt(rgb[1])
+                    b = parseInt(rgb[2])
+                    int24 = b + (g << 8) + (r << 16)
+                    break
+                case 'color24d':
+                    int24 = parseInt(sourceVal)
+                    break
+                case 'color16':
+                    int16 = parseInt(sourceVal.replace(/^#/, '').replace('0x', ''), 16)
+                    b = scale(int16 & 0b11111, 31, 255)
+                    g = scale((int16 >> 5) & 0b111111, 63, 255)
+                    r = scale(int16 >> 11, 31, 255)
+                    int24 = b + (g << 8) + (r << 16)
+                    break
+                case 'color16rgb':
+                    var c
+                    if (sourceVal.indexOf(',') == -1) c = ' '; else c = ',';
+                    rgb = sourceVal.split(c)
+                    if (rgb.length < 3) return
+                    r = scale(rgb[0], 31, 255)
+                    g = scale(rgb[1], 31, 255)
+                    b = scale(rgb[2], 31, 255)
+                    int24 = b + (g << 8) + (r << 16)
+                    break
+                case 'color16d':
+                    int16 = parseInt(sourceVal)
+                    b = scale(int16 & 0b11111, 31, 255)
+                    g = scale((int16 >> 5) & 0b111111, 63, 255)
+                    r = scale(int16 >> 11, 31, 255)
+                    int24 = b + (r << 8) + (b << 16)
+            }
+            r = (int24 & 0xFF0000) >> 16;
+            g = (int24 & 0xFF00) >> 8;
+            b = int24 & 0xFF;
+            r5 = (r * 249 + 1014) >> 11;
+            g6 = (g * 253 + 505) >> 10;
+            b5 = (b * 249 + 1014) >> 11;
+            let RGB565 = 0;
+            RGB565 = RGB565 | (r5 << 11);
+            RGB565 = RGB565 | (g6 << 5);
+            RGB565 = RGB565 | b5;
+            var hex24 = int24.toString(16)
+            while (hex24.length < 6) {
+                hex24 = '0' + hex24
+            }
+
+            if (source != 'color24') {
+                $('#color24').val('#' + hex24)
+            }
+            if (source != 'colorPicker') {
+                $('#colorPicker').val('#' + hex24)
+            }
+            if (source != 'color24rgb') {
+                $('#color24rgb').val(r + ', ' + g + ', ' + b)
+            }
+            if (source != 'color24d') {
+                $('#color24d').val(int24)
+            }
+            if (source != 'color16') {
+
+                $('#color16').val('0x' + RGB565.toString(16))
+            }
+            if (source != 'color16rgb') {
+                $('#color16rgb').val(r5 + ', ' + g6 + ', ' + b5)
+            }
+            if (source != 'color16d') {
+                $('#color16d').val(RGB565.toString())
+            }
+        }
+
+        function scale(x, h1, h2) {
+            return Math.round(x / h1 * h2)
+        }
+
+
+        update('colorPicker')
+
+    </script>
+</body>
+
+</html>
